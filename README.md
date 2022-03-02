@@ -1,5 +1,7 @@
 # 目錄(for c#)
 - <a href="#GC">GC運作原理</a>
+- <a href="#Iinterface&abstract">Interface & Abstract class</a>
+- <a href="#Thread&Task">Thread & Task</a>
 
 ## <a name="GC">GC運作原理</a>
 ### Stack & Heap
@@ -42,3 +44,27 @@ GC的演算法有幾個考慮：
 
 但是如果確定Dispose()成功執行，那會建議在後面再加一個`GC.SuppressFinalize(this);`，告訴GC不需要再去呼叫這個物件的Finalize()
 
+## <a name="Iinterface&abstract">Interface & Abstract class</a>
+
+面試常常問的問題： Interface與Abstract Class有什麼區別？
+
+> 除非需要為子類別提供公共功能，否則優先使用介面。
+
+Interface的中心思想是「封裝隔離」，意思就是不需要知道裡面的實作方法，看到的只會是我提供了哪些方法或屬性。而且繼承了這個Interface之後，必須要實作裡面所有的方法以及屬性。在組合不同類別的時候可以使用Interface。
+
+抽象類別是在整個繼承體系的最上層，裡面可以再宣告抽象的方法或是普通的方法，如果是抽象的方法就一定要override它。在繼承相關的類別的時候可以使用抽象類別。
+
+除非要用到的類別他們關係真的很緊密，例如交通工具、汽車之間的關係，他們之間有一些共用的方法，不然使用Interface是較為恰當的。
+
+## <a name="Thread&Task">Thread & Task</a>
+
+Thread 類和 Task 類都用於 C# 中的並行程式設計。
+
+Thread在C#中建立實際的作業系統級別的執行緒。用Thread建立的執行緒會佔用堆疊記憶體等資源。任何用完的執行緒都會先回到執行緒池備用，不會立刻銷毀。執行緒池所有執行緒，都是屬於背景執行緒。
+
+執行緒池的使用還是有些許缺點，例如並不知道操作什麼時候會結束，無法有回傳值。所以才會有Task出現。Task則是建立一個非同步的任務，可以知道什麼時間結束以及回傳值，一般來說會在thread pool執行，不需要任何額外的記憶體或CPU資源，也不能指定執行緒的優先順序。
+
+如果Task執行的時間很長，為了避免佔用
+thread pool裡面的資源，有提供一個LongRunning的option，此時將會提供一個新的執行緒來執行，而不會去thread pool取。
+
+對於任何長時間執行的操作，應優先選擇執行緒，而對於任何其他非同步操作，應優先選擇任務。
