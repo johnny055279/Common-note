@@ -2,6 +2,8 @@
 - <a href="#GC">GC運作原理</a>
 - <a href="#Iinterface&abstract">Interface & Abstract class</a>
 - <a href="#Thread&Task">Thread & Task</a>
+- <a href="#Session&Cookie">Session & Cookie</a>
+- <a href="#CORS">CORS解決的原理</a>
 
 ## <a name="GC">GC運作原理</a>
 ### Stack & Heap
@@ -68,3 +70,36 @@ Thread在C#中建立實際的作業系統級別的執行緒。用Thread建立的
 thread pool裡面的資源，有提供一個LongRunning的option，此時將會提供一個新的執行緒來執行，而不會去thread pool取。
 
 對於任何長時間執行的操作，應優先選擇執行緒，而對於任何其他非同步操作，應優先選擇任務。
+
+## <a name="Session&Cookie">Session & Cookie</a>
+
+Session與Cookie最大的不同在於，Session將資料以object的形式暫時性的儲存在sever裡面，用於跨頁面瀏覽時讀取內容。
+
+步驟：
+
+1. Client端發送Request給Server，Server產生一個SessionId。
+2. 將SessionId、UserName、ExpireDate...等等資訊儲存在資料庫。
+3. 以Cookie形式將SessionId送回Client儲存。
+4. 每當有新的Request進來的時候就可以檢查這個SessionId跟User是否符合，以及是否還有效。
+
+Cookie是一個小型的文檔儲存在Client端，最大的大小為4kb，主要的工作是記錄一些瀏覽的歷史資料，例如購物車。Cookie只能以string的形式儲存，正因為以上的特性，Cookie並不能算是一個安全的儲存形式，任何人都可以取得Cookie的資料。
+
+## <a name="CORS">CORS解決的原理</a>
+在同源政策下，非同源的request則會因為安全性的考量受到限制。所謂的同源，指的是相同的通訊協定、相同的網域、相同的通訊埠。
+
+在 CORS 的規範裡面，跨來源請求有分兩種：「簡單」的請求和「非簡單」的請求。
+
+- 簡單請求：只能是 HTTP GET, POST or HEAD 方法、自訂的 request header 只能是特定的幾種：Accept、Accept-Language、Content-Language 或 Content-Type（值只能是 application/x-www-form-urlencoded、multipart/form-data 或 text/plain）
+- 一般跨網域請求：瀏覽器在發送請求之前會先發送一個 「preflight request（預檢請求）」，其作用在於先問伺服器：你是否允許這樣的請求？真的允許的話，我才會把請求完整地送過去。
+- 
+收到preflight request後：
+
+Server必須告訴瀏覽器允許的方法和header有哪些。因此Server的回應必須帶有以下兩個 header:
+
+>Access-Control-Allow-Methods: 允許的 HTTP 方法。
+
+>Access-Control-Allow-Headers: 允許的非「簡單」header。
+
+瀏覽器收到正確的preflight response，表示CORS的驗證通過，就可以送出跨來源請求了。
+
+最後一步，server 還是要回應<code>Access-Control-Allow-Origin header</code>。瀏覽器會再檢查一次跨來源請求的回應是否帶有正確的<code>Access-Control-Allow-Origin header</code>
