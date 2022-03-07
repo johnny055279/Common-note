@@ -4,6 +4,7 @@
 - <a href="#Thread&Task">Thread & Task</a>
 - <a href="#Session&Cookie">Session & Cookie</a>
 - <a href="#CORS">CORS解決的原理</a>
+- <a href="#Enum&Collection">IEnumerable, ICollection, IList And List</a>
 
 ## <a name="GC">GC運作原理</a>
 ### Stack & Heap
@@ -103,3 +104,122 @@ Server必須告訴瀏覽器允許的方法和header有哪些。因此Server的�
 瀏覽器收到正確的preflight response，表示CORS的驗證通過，就可以送出跨來源請求了。
 
 最後一步，server 還是要回應<code>Access-Control-Allow-Origin header</code>。瀏覽器會再檢查一次跨來源請求的回應是否帶有正確的<code>Access-Control-Allow-Origin header</code>
+
+## <a name="Enum&Collection">IEnumerable, ICollection, IList And List</a>
+
+### IEnumerable & IEnumerable<T>
+在C#的library中定義了兩個IEnumerable的Interface:
+
+IEnumerable: Namespace為System.Collections，而且只有一個實作的方法。
+```
+public interface IEnumerable
+{
+  IEnumerator GetEnumerator();
+}
+```
+GetEnumerator方法必須回傳一個已經實作IEnumerator的class。
+
+C#的foreach對於任何具有實作IEnumerator的class都有作用。
+
+IEnumerable<T>: 除了namespace為System.Collections.Generic以外，其餘的與IEnumerable幾乎一樣，只是它是generic並為type-safe。
+    
+### ICollection & ICollection<T>
+
+兩者namespace分別為<code>System.Collections.ICollection</code>
+以及<code>System.Collections.Generic.ICollection<T></code>
+
+並繼承了IEnumerable和IEnumerabl<T>
+
+```
+public interface ICollection : IEnumerable
+{
+  int Count { get; }  
+  bool IsSynchronized { get; }
+  Object SyncRoot { get; }
+  void CopyTo(Array array, int index);
+}
+```
+```
+public interface ICollection<T> : IEnumerable<T>, IEnumerable
+{
+  int Count { get; }
+  bool IsReadOnly { get; }
+  void Add(T item);
+  void Clear();
+  bool Contains(T item);
+  void CopyTo(T[] array, int arrayIndex);
+  bool Remove(T item);
+}
+```
+泛型的集合看上去與非泛型的不太一樣，多了一些實作的的方法，這是因為NET2.0之後才加入了泛型，而非泛型的1.1就出現了。
+    
+### IList & IList<T>
+    
+IList 繼承了ICollection與IEnumerable
+
+```
+public interface IList : ICollection, IEnumerable
+{
+  bool IsFixedSize { get; }
+  bool IsReadOnly { get; }
+  Object this[int index] { get; set; }
+  int Add(Object value);
+  void Clear();
+  bool Contains(Object value);
+  int IndexOf(Object value);
+  void Insert(int index, Object value);
+  void Remove(Object value);
+  void RemoveAt(int index);
+}
+```
+    
+IList<T>則是繼承了ICollection<T>, IEnumerable<T>以及IEnumerable
+    
+```
+public interface IList<T> : ICollection<T>, IEnumerable<T>, IEnumerable
+{
+  T this[int index] { get; set; }
+  int IndexOf(T item);
+  void Insert(int index, T item);
+  void RemoveAt(int index);
+}
+```
+
+### 使用的時機
+
+
+|類型|使用時幾|
+|---|---|
+|IEnumerable|只需要迭代這個集合而且只是要讀取這個集合中的元素(因為他沒有Add或Remove這種異動的功能)|
+|ICollection|除了可以迭代集合以外你還在乎他的大小|
+|IList|除了可以迭代集合、控制大小以外，你還在乎他的排序以及位置|
+|List|根據依賴反轉的原則，不建議直接使用List進行實作，除非必須用到List實作時的額外功能(ex: Sort()、Find()...)|
+    
+基本上如果使用的集合需要實作的越少(例如IEnumerable)，使用者在傳入參數的時候可以有比較大的彈性(因為即使是自定義的Collection，幾乎都會去實作IEnumeralbe);反之如果傳入的參數限定在IList，如果呼叫者的實作只有IEnumerable，就會出錯。
+    
+在使用LinQ的時候返回的都是IEnumerable，這時候只會把查詢的條件保留起來，並不會將結果存入記憶體中，但是一但ToList()的時候會迫使直接實例化，將結果存入記憶體。
+    
+所以一般來說，在查詢的結果到最後時，才去使用ToList()，避免資源的浪費。在這之前建議使用IEnumerable做為參數傳輸。
+    
+### 有關IEnumerable與IQueryable<T>
+
+兩者皆為延遲啟動，IQueryable是LinQ-to-SQL，IEnumerable是LinQ-to-object。
+以<a href="https://stackoverflow.com/questions/2876616/returning-ienumerablet-vs-iqueryablet">Stackoverflow</a>上的解釋：
+```
+IQueryable<Customer> custs = ...;
+// Later on...
+var goldCustomers = custs.Where(c => c.IsGold);
+    
+IEnumerable<Customer> custs = ...;
+// Later on...
+var goldCustomers = custs.Where(c => c.IsGold);
+```
+IQueryable的程式會驅動SQL的查詢並且只查出IsGold的結果。
+    
+IEnumerable的程式則是會先把SQL查詢的資料拿出來，然後再記憶體中剔除不是IsGold的資料。
+    
+看似IQueryable是一個很好的選擇，但是在repository layer或service layer盡量避免當作參數傳遞(或通過)，可以保護資料庫避免因為堆疊LinQ表達式而產生較高的資源花費。
+    
+不過大部分都還是使用IEnumerable的原因是，當資料不大而且經常需要篩選的時後，其實記憶體做這件事情速度會比較快。
+    
+其次是並不是所有的LinQ提供者(LINQ2SQL, EF, NHibernate, MongoDB etc.)都會支援LinQ所有的操作，反而是至少如果是Collection大家都應該都會去實作IEnumerable，所以會比較安全。
